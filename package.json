@@ -46,8 +46,8 @@
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.19.7",
     "@types/passport-jwt": "^4.0.1",
-    "prisma": "^6.19.2",
-    "ts-node": "^1.7.1",
-    "typescript": "^5.7.3"
+    "prisma": "^7.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
