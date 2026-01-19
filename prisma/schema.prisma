@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Carrera {
+  id          String       @id @default(cuid())
+  nombre      String       @unique
+  estudiantes Estudiante[]
+}
+
+model Estudiante {
+  id            String        @id @default(cuid())
+  nombre        String
+  apellido      String
+  activo        Boolean       @default(true)
+  carreraId     String
+  carrera       Carrera       @relation(fields: [carreraId], references: [id])
+  inscripciones Inscripcion[]
+}
+
+model Asignatura {
+  id               String        @id @default(cuid())
+  nombre           String
+  cuposDisponibles Int           @default(25)
+  inscripciones    Inscripcion[]
+}
+
+model Inscripcion {
+  id           String     @id @default(cuid())
+  fecha        DateTime   @default(now())
+  estudianteId String
+  estudiante   Estudiante @relation(fields: [estudianteId], references: [id])
+  asignaturaId String
+  asignatura   Asignatura @relation(fields: [asignaturaId], references: [id])
+}

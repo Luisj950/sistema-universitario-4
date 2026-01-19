@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String   @id @default(cuid())
+  email    String   @unique
+  password String
+  nombre   String
+  roles    String[] @default(["user"])
+}
+
+model Estudiante {
+  id            String        @id @default(cuid())
+  nombre        String
+  apellido      String
+  inscripciones Inscripcion[]
+  matriculas    Matricula[]   // <--- AGREGADO: Para ver el historial de matrículas del estudiante
+}
+
+model Profesor {
+  id       String    @id @default(cuid())
+  nombre   String
+  apellido String
+  titulos  Titulo[]
+  materias Materia[]
+}
+
+model Titulo {
+  id         String   @id @default(cuid())
+  nombre     String
+  profesor   Profesor @relation(fields: [profesorId], references: [id])
+  profesorId String
+}
+
+model Carrera {
+  id       String    @id @default(cuid())
+  nombre   String    @unique
+  materias Materia[]
+}
+
+model Aula {
+  id       String    @id @default(cuid())
+  nombre   String    @unique
+  materias Materia[]
+}
+
+// --- MATERIA (Unificada con Ciclo) ---
+model Materia {
+  id            String        @id @default(cuid())
+  nombre        String
+  
+  carrera       Carrera       @relation(fields: [carreraId], references: [id])
+  carreraId     String
+  
+  profesor      Profesor      @relation(fields: [profesorId], references: [id])
+  profesorId    String
+  
+  aula          Aula          @relation(fields: [aulaId], references: [id])
+  aulaId        String
+  
+  inscripciones Inscripcion[]
+
+  // Relación con Ciclo (Opcional "?" por si hay materias extracurriculares o nuevas)
+  ciclo         Ciclo?        @relation(fields: [cicloId], references: [id])
+  cicloId       String?
+}
+
+model Inscripcion {
+  id           String     @id @default(cuid())
+  fecha        DateTime   @default(now())
+  estudiante   Estudiante @relation(fields: [estudianteId], references: [id])
+  estudianteId String
+  materia      Materia    @relation(fields: [materiaId], references: [id])
+  materiaId    String
+  
+  @@unique([estudianteId, materiaId])
+}
+
+// --- NUEVAS TABLAS SEGÚN LA PIZARRA ---
+
+model Periodo {
+  id          String      @id @default(cuid())
+  nombre      String      // Ej: "2025 - 2026"
+  fechaInicio DateTime
+  fechaFin    DateTime
+  matriculas  Matricula[]
+}
+
+model Ciclo {
+  id       String    @id @default(cuid())
+  nombre   String    // Ej: "Primer Ciclo"
+  materias Materia[]
+}
+
+model Matricula {
+  id           String     @id @default(cuid())
+  fecha        DateTime   @default(now())
+  
+  estudiante   Estudiante @relation(fields: [estudianteId], references: [id])
+  estudianteId String
+  
+  periodo      Periodo    @relation(fields: [periodoId], references: [id])
+  periodoId    String
+
+  @@unique([estudianteId, periodoId])
+}
