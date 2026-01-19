@@ -1,21 +1,26 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
 
+// 1. Cargar variables de entorno
 dotenv.config();
 
-const prisma = new PrismaClient();
+// 2. Configurar la conexión para Prisma 7
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Iniciando carga de datos para el IST Sudamericano...');
+  console.log('🌱 Iniciando carga de datos en el IST Sudamericano...');
 
-  // 1. Limpieza segura (evita duplicados al re-ejecutar)
+  // 3. Limpieza de tablas (Orden de integridad referencial para evitar errores de FK)
   await prisma.inscripcion.deleteMany({});
   await prisma.estudiante.deleteMany({});
-  await prisma.materia.deleteMany({}); // Si tienes este modelo, sino bórralo
   await prisma.asignatura.deleteMany({});
   await prisma.carrera.deleteMany({});
 
-  // 2. Crear Carreras (Software y Diseño)
+  // 4. Crear Carreras con nombres reales
   const software = await prisma.carrera.create({
     data: { nombre: 'Desarrollo de Software' },
   });
@@ -24,41 +29,49 @@ async function main() {
     data: { nombre: 'Diseño Gráfico' },
   });
 
-  // 3. Crear Asignaturas para pruebas ACID
+  // 5. Crear Asignaturas (Incluye una con 0 cupos para tu prueba de ACID)
   await prisma.asignatura.create({
-    data: { nombre: 'Arquitectura NestJS', cuposDisponibles: 10 },
+    data: { nombre: 'Arquitectura NestJS', cuposDisponibles: 12 },
   });
 
   await prisma.asignatura.create({
-    data: { nombre: 'Taller de UI/UX', cuposDisponibles: 0 }, // Para probar fallos de ACID
+    data: { nombre: 'Bases de Datos con Prisma 7', cuposDisponibles: 15 },
   });
 
-  // 4. Crear 10 Estudiantes vinculados a las carreras
-  const estudiantesData = [
+  await prisma.asignatura.create({
+    data: { nombre: 'Taller de UI/UX Avanzado', cuposDisponibles: 0 }, // Para probar error de cupos
+  });
+
+  // 6. Carga de 10 Estudiantes Reales (8 Activos y 2 Inactivos para pruebas de lógica)
+  const estudiantesRealistas = [
     { nombre: 'Luis', apellido: 'Jaramillo', activo: true, carreraId: software.id },
-    { nombre: 'Carlos', apellido: 'Pérez', activo: true, carreraId: software.id },
-    { nombre: 'María', apellido: 'Sánchez', activo: true, carreraId: diseno.id },
-    { nombre: 'Ana', apellido: 'Mora', activo: false, carreraId: software.id },
-    { nombre: 'Pedro', apellido: 'García', activo: true, carreraId: software.id },
-    { nombre: 'Elena', apellido: 'Torres', activo: true, carreraId: diseno.id },
-    { nombre: 'Diego', apellido: 'Vera', activo: true, carreraId: software.id },
-    { nombre: 'Lucía', apellido: 'Rojas', activo: true, carreraId: diseno.id },
-    { nombre: 'Juan', apellido: 'Ortiz', activo: false, carreraId: diseno.id },
-    { nombre: 'Sofía', apellido: 'Castro', activo: true, carreraId: software.id },
+    { nombre: 'Ana', apellido: 'Pazmiño', activo: true, carreraId: software.id },
+    { nombre: 'Pedro', apellido: 'Vintimilla', activo: false, carreraId: software.id },
+    { nombre: 'María', apellido: 'Auxiliadora', activo: true, carreraId: software.id },
+    { nombre: 'Carlos', apellido: 'Ortiz', activo: true, carreraId: diseno.id },
+    { nombre: 'Elena', apellido: 'Cuenca', activo: true, carreraId: diseno.id },
+    { nombre: 'Diego', apellido: 'Mora', activo: true, carreraId: software.id },
+    { nombre: 'Lucía', apellido: 'Vera', activo: true, carreraId: diseno.id },
+    { nombre: 'Juan', apellido: 'Zúñiga', activo: false, carreraId: diseno.id },
+    { nombre: 'Sofía', apellido: 'Cárdenas', activo: true, carreraId: software.id },
   ];
 
-  for (const est of estudiantesData) {
-    await prisma.estudiante.create({ data: est });
+  console.log('📡 Insertando estudiantes...');
+  for (const est of estudiantesRealistas) {
+    await prisma.estudiante.create({
+      data: est,
+    });
   }
 
-  console.log('✅ Seed completado con éxito: 10 registros creados.');
+  console.log('✅ Seed completado con éxito: 10 estudiantes y 3 asignaturas creados.');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error:', e);
+    console.error('❌ Error en el seed:', e);
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });
