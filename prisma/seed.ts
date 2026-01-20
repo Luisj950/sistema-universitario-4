@@ -3,47 +3,47 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
 
-// 1. Cargar variables de entorno
 dotenv.config();
 
-// 2. Configurar la conexión para Prisma 7
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Iniciando carga de datos en el IST Sudamericano...');
+  console.log('🌱 Iniciando carga masiva de datos en el IST Sudamericano...');
 
-  // 3. Limpieza de tablas (Orden de integridad referencial para evitar errores de FK)
+  // 1. Limpieza de tablas
   await prisma.inscripcion.deleteMany({});
   await prisma.estudiante.deleteMany({});
   await prisma.asignatura.deleteMany({});
+  await prisma.docente.deleteMany({});
   await prisma.carrera.deleteMany({});
 
-  // 4. Crear Carreras con nombres reales
-  const software = await prisma.carrera.create({
-    data: { nombre: 'Desarrollo de Software' },
+  // 2. Crear Carreras
+  const software = await prisma.carrera.create({ data: { nombre: 'Software' } });
+  const diseno = await prisma.carrera.create({ data: { nombre: 'Diseño' } });
+
+  // 3. Crear Docentes
+  const prof1 = await prisma.docente.create({ 
+    data: { nombre: 'Roberto Eras', tipoContrato: 'TIEMPO_COMPLETO' } 
+  });
+  const prof2 = await prisma.docente.create({ 
+    data: { nombre: 'Maria Solano', tipoContrato: 'TIEMPO_COMPLETO' } 
   });
 
-  const diseno = await prisma.carrera.create({
-    data: { nombre: 'Diseño Gráfico' },
-  });
-
-  // 5. Crear Asignaturas (Incluye una con 0 cupos para tu prueba de ACID)
+  // 4. Crear Asignaturas
   await prisma.asignatura.create({
-    data: { nombre: 'Arquitectura NestJS', cuposDisponibles: 12 },
+    data: { nombre: 'NestJS', cuposDisponibles: 10, carreraId: software.id, docenteId: prof1.id }
   });
-
   await prisma.asignatura.create({
-    data: { nombre: 'Bases de Datos con Prisma 7', cuposDisponibles: 15 },
+    data: { nombre: 'PostgreSQL', cuposDisponibles: 5, carreraId: software.id, docenteId: prof1.id }
   });
-
   await prisma.asignatura.create({
-    data: { nombre: 'Taller de UI/UX Avanzado', cuposDisponibles: 0 }, // Para probar error de cupos
+    data: { nombre: 'Adobe Illustrator', cuposDisponibles: 15, carreraId: diseno.id, docenteId: prof2.id }
   });
 
-  // 6. Carga de 10 Estudiantes Reales (8 Activos y 2 Inactivos para pruebas de lógica)
-  const estudiantesRealistas = [
+  // 5. Lista de 20 Estudiantes Reales
+  const listaEstudiantes = [
     { nombre: 'Luis', apellido: 'Jaramillo', activo: true, carreraId: software.id },
     { nombre: 'Ana', apellido: 'Pazmiño', activo: true, carreraId: software.id },
     { nombre: 'Pedro', apellido: 'Vintimilla', activo: false, carreraId: software.id },
@@ -54,16 +54,24 @@ async function main() {
     { nombre: 'Lucía', apellido: 'Vera', activo: true, carreraId: diseno.id },
     { nombre: 'Juan', apellido: 'Zúñiga', activo: false, carreraId: diseno.id },
     { nombre: 'Sofía', apellido: 'Cárdenas', activo: true, carreraId: software.id },
+    { nombre: 'Javier', apellido: 'Mendoza', activo: true, carreraId: software.id },
+    { nombre: 'Gabriela', apellido: 'Rios', activo: true, carreraId: software.id },
+    { nombre: 'Andrés', apellido: 'Calle', activo: false, carreraId: software.id },
+    { nombre: 'Paola', apellido: 'Torres', activo: true, carreraId: diseno.id },
+    { nombre: 'Fernando', apellido: 'Guaman', activo: true, carreraId: diseno.id },
+    { nombre: 'Mónica', apellido: 'Sánchez', activo: true, carreraId: software.id },
+    { nombre: 'Ricardo', apellido: 'Castro', activo: true, carreraId: diseno.id },
+    { nombre: 'Verónica', apellido: 'Luna', activo: true, carreraId: software.id },
+    { nombre: 'Patricio', apellido: 'Serrano', activo: false, carreraId: software.id },
+    { nombre: 'Isabel', apellido: 'Díaz', activo: true, carreraId: diseno.id },
   ];
 
-  console.log('📡 Insertando estudiantes...');
-  for (const est of estudiantesRealistas) {
-    await prisma.estudiante.create({
-      data: est,
-    });
+  console.log('📡 Insertando 20 registros de estudiantes...');
+  for (const est of listaEstudiantes) {
+    await prisma.estudiante.create({ data: est });
   }
 
-  console.log('✅ Seed completado con éxito: 10 estudiantes y 3 asignaturas creados.');
+  console.log('✅ Seed completado con éxito.');
 }
 
 main()
