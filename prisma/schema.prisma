@@ -37,3 +37,5 @@ model Inscripcion {
   asignaturaId String
   asignatura   Asignatura @relation(fields: [asignaturaId], references: [id])
 }
+
+///comentarios
