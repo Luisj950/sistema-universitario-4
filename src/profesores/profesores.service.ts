@@ -1,21 +1,35 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaProfesoresService } from '../prisma/prisma-profesores.service'; // <--- OJO: Importamos el servicio de Profesores
+import { CreateProfesorDto } from './dto/create-profesor.dto';
+import { UpdateProfesorDto } from './dto/update-profesor.dto';
+// CAMBIO IMPORTANTE
+import { PrismaProfesoresService } from '../prisma/prisma-profesores.service';
 
 @Injectable()
 export class ProfesoresService {
   constructor(private prisma: PrismaProfesoresService) {}
 
-  create(data: any) {
-    return this.prisma.profesor.create({
-      data: {
-        nombre: data.nombre,
-        apellido: data.apellido,
-        // titulos: ... (opcional por ahora)
-      },
+  create(createProfesorDto: CreateProfesorDto) {
+    return this.prisma.docente.create({
+      data: createProfesorDto,
     });
   }
 
   findAll() {
-    return this.prisma.profesor.findMany();
+    return this.prisma.docente.findMany();
+  }
+
+  findOne(id: string) {
+    return this.prisma.docente.findUnique({ where: { id } });
+  }
+
+  update(id: string, updateProfesorDto: UpdateProfesorDto) {
+    return this.prisma.docente.update({
+      where: { id },
+      data: updateProfesorDto,
+    });
+  }
+
+  remove(id: string) {
+    return this.prisma.docente.delete({ where: { id } });
   }
 }

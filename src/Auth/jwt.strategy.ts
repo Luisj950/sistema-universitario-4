@@ -1,20 +1,31 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
+// 1. IMPORTA EL SERVICIO DE USUARIOS
+import { PrismaUsuariosService } from '../prisma/prisma-usuarios.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private configService: ConfigService) {
+  constructor(
+      // 2. INYECTA EL SERVICIO CORRECTO
+      private prisma: PrismaUsuariosService
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.getOrThrow('JWT_SECRET'),
+      secretOrKey: process.env.JWT_SECRET || '123',
     });
   }
 
   async validate(payload: any) {
-    // El payload es el objeto que codificamos en el método login del auth.service
-    return { userId: payload.sub, email: payload.email, roles: payload.roles };
+    // 3. Busca el usuario por ID
+    const user = await this.prisma.estudiante.findUnique({
+      where: { id: payload.sub },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    return user;
   }
 }

@@ -1,0 +1,34 @@
+generator client_carreras {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/client-carreras"
+}
+
+
+datasource db_carreras {
+  provider = "postgresql"
+}
+
+model Carrera {
+  id          String       @id @default(cuid())
+  nombre      String       @unique
+  asignaturas Asignatura[]
+}
+
+model Asignatura {
+  id               String        @id @default(cuid())
+  nombre           String
+  cuposDisponibles Int           @default(25)
+  carreraId        String?
+  carrera          Carrera?      @relation(fields: [carreraId], references: [id])
+  docenteId        String?       // ID referencial al otro esquema
+  inscripciones    Inscripcion[]
+}
+
+model Inscripcion {
+  id           String     @id @default(cuid())
+  fecha        DateTime   @default(now())
+  periodoId    String     @default("2026-A")
+  estudianteId String     // ID referencial al esquema de usuarios
+  asignaturaId String
+  asignatura   Asignatura @relation(fields: [asignaturaId], references: [id])
+}

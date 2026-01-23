@@ -18,7 +18,11 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node --transpile-only prisma/seed.ts",
     "db:reset": "prisma migrate reset --force && npm run prisma:seed",
-    "db:setup": "npm install && npm run prisma:generate && npm run prisma:migrate && npm run prisma:seed"
+    "db:setup": "npm install && npm run prisma:generate && npm run prisma:migrate && npm run prisma:seed",
+    "prisma:gen:usuarios": "prisma generate --config prisma/usuarios/prisma.config.ts",
+    "prisma:gen:profesores": "prisma generate --config prisma/profesores/prisma.config.ts",
+    "prisma:gen:carreras": "prisma generate --config prisma/carreras/prisma.config.ts",
+    "prisma:generate:all": "npm run prisma:gen:usuarios && npm run prisma:gen:profesores && npm run prisma:gen:carreras"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -28,15 +32,15 @@
     "@nestjs/mapped-types": "^2.1.0",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
-    "@prisma/adapter-pg": "^7.2.0",
+    "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.2.0",
+    "@prisma/config": "^7.3.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
-    "dotenv": "^17.2.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "pg": "^8.16.3",
+    "pg": "^8.17.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -46,6 +50,8 @@
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.19.7",
     "@types/passport-jwt": "^4.0.1",
+    "@types/pg": "^8.16.0",
+    "dotenv": "^17.2.3",
     "prisma": "^7.2.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

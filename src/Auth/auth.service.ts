@@ -3,21 +3,20 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-
-// 1. CAMBIO AQUÍ: Importamos el PrismaService unificado
-import { PrismaService } from '../prisma/prisma.service'; 
+// ✅ IMPORTACIÓN CORRECTA: Usamos el servicio de usuarios
+import { PrismaUsuariosService } from '../prisma/prisma-usuarios.service';
 
 @Injectable()
 export class AuthService {
   constructor(
-    // 2. CAMBIO AQUÍ: Inyectamos PrismaService, que contiene todos los modelos
-    private prisma: PrismaService, 
+    // ✅ INYECCIÓN CORRECTA: Usamos PrismaUsuariosService
+    private prisma: PrismaUsuariosService,
     private jwtService: JwtService,
   ) {}
 
+  // 👇 ESTA FUNCIÓN ES LA QUE TE FALTABA O ESTABA DAÑADA
   async validateUser(email: string, pass: string): Promise<any> {
-    // Ahora this.prisma.user funcionará porque PrismaService conoce el modelo User
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.estudiante.findFirst({
       where: { email },
     });
 
@@ -28,8 +27,9 @@ export class AuthService {
     return null;
   }
   
+  // 👇 ESTA TAMBIÉN DEBE ESTAR
   async login(user: any) {
-    const payload = { email: user.email, sub: user.id, roles: user.roles };
+    const payload = { email: user.email, sub: user.id };
     return {
       access_token: this.jwtService.sign(payload),
     };
@@ -39,12 +39,15 @@ export class AuthService {
     const { email, password, nombre } = registerDto;
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    return this.prisma.user.create({
+    return this.prisma.estudiante.create({
       data: {
         email,
         password: hashedPassword,
         nombre,
-        roles: ["user"] 
+        // Manejo seguro de opcionales para evitar errores
+        apellido: registerDto.apellido || 'Sin apellido',
+        carreraId: registerDto.carreraId || 'sin-carrera',
+        activo: true
       },
     });
   }

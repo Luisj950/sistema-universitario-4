@@ -1,19 +1,18 @@
 import { Global, Module } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
 import { PrismaUsuariosService } from './prisma-usuarios.service';
-import { PrismaCarrerasService } from './prisma-carreras.service';
 import { PrismaProfesoresService } from './prisma-profesores.service';
+import { PrismaCarrerasService } from './prisma-carreras.service';
+// El PrismaService genérico ya no es estrictamente necesario, pero puedes dejarlo si quieres
+// import { PrismaService } from './prisma.service'; 
 
 @Global()
 @Module({
   providers: [
-    PrismaService, 
     PrismaUsuariosService, 
-    PrismaCarrerasService, 
-    PrismaProfesoresService
+    PrismaProfesoresService, 
+    PrismaCarrerasService
   ],
   exports: [
-    PrismaService, 
     PrismaUsuariosService, 
     PrismaCarrerasService, 
     PrismaProfesoresService

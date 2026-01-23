@@ -1,0 +1,15 @@
+generator client_profesores {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/client-profesores"
+}
+
+datasource db_profesores {
+  provider = "postgresql"
+}
+
+model Docente {
+  id           String @id @default(cuid())
+  nombre       String
+  tipoContrato String
+  estado       String @default("ACTIVO")
+}

@@ -1,85 +1,100 @@
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient as ClienteUsuarios } from '@prisma/client-usuarios';
+import { PrismaClient as ClienteProfesores } from '@prisma/client-profesores';
+import { PrismaClient as ClienteCarreras } from '@prisma/client-carreras';
 import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+// 👇 SOLUCIÓN REAL PARA PRISMA 7:
+// Usamos "Adapters" para inyectar la conexión manualmente, 
+// ya que 'datasources' y 'url' en schema están prohibidos.
+
+// 1. Conexión Usuarios
+const poolUsuarios = new Pool({ connectionString: process.env.DATABASE_URL_USUARIOS });
+const adapterUsuarios = new PrismaPg(poolUsuarios);
+const prismaUsuarios = new ClienteUsuarios({ adapter: adapterUsuarios });
+
+// 2. Conexión Profesores
+const poolProfesores = new Pool({ connectionString: process.env.DATABASE_URL_PROFESORES });
+const adapterProfesores = new PrismaPg(poolProfesores);
+const prismaProfesores = new ClienteProfesores({ adapter: adapterProfesores });
+
+// 3. Conexión Carreras
+const poolCarreras = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapterCarreras = new PrismaPg(poolCarreras);
+const prismaCarreras = new ClienteCarreras({ adapter: adapterCarreras });
 
 async function main() {
-  console.log('🌱 Iniciando carga masiva de datos en el IST Sudamericano...');
+  console.log('🌱 Iniciando Seed con Adaptadores (Bypass)...');
 
-  // 1. Limpieza de tablas
-  await prisma.inscripcion.deleteMany({});
-  await prisma.estudiante.deleteMany({});
-  await prisma.asignatura.deleteMany({});
-  await prisma.docente.deleteMany({});
-  await prisma.carrera.deleteMany({});
-
-  // 2. Crear Carreras
-  const software = await prisma.carrera.create({ data: { nombre: 'Software' } });
-  const diseno = await prisma.carrera.create({ data: { nombre: 'Diseño' } });
-
-  // 3. Crear Docentes
-  const prof1 = await prisma.docente.create({ 
-    data: { nombre: 'Roberto Eras', tipoContrato: 'TIEMPO_COMPLETO' } 
-  });
-  const prof2 = await prisma.docente.create({ 
-    data: { nombre: 'Maria Solano', tipoContrato: 'TIEMPO_COMPLETO' } 
-  });
-
-  // 4. Crear Asignaturas
-  await prisma.asignatura.create({
-    data: { nombre: 'NestJS', cuposDisponibles: 10, carreraId: software.id, docenteId: prof1.id }
-  });
-  await prisma.asignatura.create({
-    data: { nombre: 'PostgreSQL', cuposDisponibles: 5, carreraId: software.id, docenteId: prof1.id }
-  });
-  await prisma.asignatura.create({
-    data: { nombre: 'Adobe Illustrator', cuposDisponibles: 15, carreraId: diseno.id, docenteId: prof2.id }
-  });
-
-  // 5. Lista de 20 Estudiantes Reales
-  const listaEstudiantes = [
-    { nombre: 'Luis', apellido: 'Jaramillo', activo: true, carreraId: software.id },
-    { nombre: 'Ana', apellido: 'Pazmiño', activo: true, carreraId: software.id },
-    { nombre: 'Pedro', apellido: 'Vintimilla', activo: false, carreraId: software.id },
-    { nombre: 'María', apellido: 'Auxiliadora', activo: true, carreraId: software.id },
-    { nombre: 'Carlos', apellido: 'Ortiz', activo: true, carreraId: diseno.id },
-    { nombre: 'Elena', apellido: 'Cuenca', activo: true, carreraId: diseno.id },
-    { nombre: 'Diego', apellido: 'Mora', activo: true, carreraId: software.id },
-    { nombre: 'Lucía', apellido: 'Vera', activo: true, carreraId: diseno.id },
-    { nombre: 'Juan', apellido: 'Zúñiga', activo: false, carreraId: diseno.id },
-    { nombre: 'Sofía', apellido: 'Cárdenas', activo: true, carreraId: software.id },
-    { nombre: 'Javier', apellido: 'Mendoza', activo: true, carreraId: software.id },
-    { nombre: 'Gabriela', apellido: 'Rios', activo: true, carreraId: software.id },
-    { nombre: 'Andrés', apellido: 'Calle', activo: false, carreraId: software.id },
-    { nombre: 'Paola', apellido: 'Torres', activo: true, carreraId: diseno.id },
-    { nombre: 'Fernando', apellido: 'Guaman', activo: true, carreraId: diseno.id },
-    { nombre: 'Mónica', apellido: 'Sánchez', activo: true, carreraId: software.id },
-    { nombre: 'Ricardo', apellido: 'Castro', activo: true, carreraId: diseno.id },
-    { nombre: 'Verónica', apellido: 'Luna', activo: true, carreraId: software.id },
-    { nombre: 'Patricio', apellido: 'Serrano', activo: false, carreraId: software.id },
-    { nombre: 'Isabel', apellido: 'Díaz', activo: true, carreraId: diseno.id },
-  ];
-
-  console.log('📡 Insertando 20 registros de estudiantes...');
-  for (const est of listaEstudiantes) {
-    await prisma.estudiante.create({ data: est });
+  // --- LIMPIEZA ---
+  try {
+    await prismaCarreras.inscripcion.deleteMany({});
+    await prismaCarreras.asignatura.deleteMany({});
+    await prismaCarreras.carrera.deleteMany({});
+    await prismaProfesores.docente.deleteMany({});
+    await prismaUsuarios.estudiante.deleteMany({});
+    console.log('🧹 Limpieza completada.');
+  } catch (e) {
+    console.log('⚠️ Aviso limpieza:', e.message);
   }
 
-  console.log('✅ Seed completado con éxito.');
+  // --- 1. CARRERAS ---
+  console.log('🏗️ Creando Carreras...');
+  const soft = await prismaCarreras.carrera.create({ data: { nombre: 'Software' } });
+  const dis = await prismaCarreras.carrera.create({ data: { nombre: 'Diseño' } });
+
+  // --- 2. DOCENTES ---
+  console.log('👨‍🏫 Creando Docentes...');
+  const prof1 = await prismaProfesores.docente.create({ 
+    data: { nombre: 'Roberto Eras', tipoContrato: 'FULL', estado: 'ACTIVO' } 
+  });
+  const prof2 = await prismaProfesores.docente.create({ 
+    data: { nombre: 'Maria Solano', tipoContrato: 'FULL', estado: 'ACTIVO' } 
+  });
+
+  // --- 3. ASIGNATURAS ---
+  console.log('📚 Creando Asignaturas...');
+  await prismaCarreras.asignatura.create({
+    data: { nombre: 'NestJS', cuposDisponibles: 10, carreraId: soft.id, docenteId: prof1.id }
+  });
+  await prismaCarreras.asignatura.create({
+    data: { nombre: 'Diseño UI', cuposDisponibles: 10, carreraId: dis.id, docenteId: prof2.id }
+  });
+
+  // --- 4. ESTUDIANTES ---
+  console.log('🎓 Creando Estudiantes...');
+  const pass = await bcrypt.hash('123456', 10);
+  
+  const estudiante = await prismaUsuarios.estudiante.create({
+    data: {
+      nombre: 'Luis',
+      apellido: 'Jaramillo',
+      email: 'luis.jaramillo@test.com',
+      password: pass,
+      activo: true,
+      carreraId: soft.id
+    }
+  });
+
+  console.log('✅ Seed finalizado.');
+  console.log('🔑 Credenciales: luis.jaramillo@test.com / 123456');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Error en el seed:', e);
+  .catch(e => {
+    console.error('❌ Error:', e);
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
-    await pool.end();
+    // Cerramos los pools y las conexiones
+    await prismaUsuarios.$disconnect();
+    await prismaProfesores.$disconnect();
+    await prismaCarreras.$disconnect();
+    await poolUsuarios.end();
+    await poolProfesores.end();
+    await poolCarreras.end();
   });

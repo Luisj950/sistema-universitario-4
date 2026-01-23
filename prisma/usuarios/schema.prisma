@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/client-usuarios"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Nota: Aquí NO va la URL, eso se carga desde el config
+}
+
+model Estudiante {
+  id        String  @id @default(cuid())
+  nombre    String
+  apellido  String
+  email     String   @unique 
+  password  String
+  activo    Boolean @default(true)
+  carreraId String  // Se mantiene solo como ID referencial
+}
