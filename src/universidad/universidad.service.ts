@@ -21,65 +21,47 @@ export class UniversidadService {
   }
 
   // --- PARTE 1: CONSULTAS DERIVADAS ---
-  // src/universidad/universidad.service.ts
 
-async listarEstudiantesActivos() {
-  // 1. Obtenemos solo los estudiantes que cumplen la condición de integridad
-  const estudiantes = await this.prismaUsuarios.estudiante.findMany({
-    where: { activo: true },
-  });
-
-  // 2. Traemos todas las carreras para el mapeo
-  const carreras = await this.prismaCarreras.carrera.findMany();
-
-  // 3. Retornamos la unión de datos (Join en memoria)
-  return estudiantes.map(est => ({
-    ...est,
-    nombreCarrera: carreras.find(c => c.id === est.carreraId)?.nombre || 'Sin Carrera'
-  }));
-}
-  // Este método responde a listarAsignaturas() en el Controller
-  async findAllAsignaturas() {
-    return this.prismaCarreras.asignatura.findMany({
-      include: { carrera: true }
+  // 1. Listar todos los estudiantes activos junto con su carrera
+  async listarEstudiantesActivos() {
+    const estudiantes = await this.prismaUsuarios.estudiante.findMany({
+      where: { activo: true },
     });
+
+    const carreras = await this.prismaCarreras.carrera.findMany();
+
+    return estudiantes.map(est => ({
+      ...est,
+      nombreCarrera: carreras.find(c => c.id === est.carreraId)?.nombre || 'Sin Carrera'
+    }));
   }
 
+  // 2. Obtener las materias asociadas a una carrera específica
   async obtenerAsignaturasPorCarrera(carreraId: string) {
     return this.prismaCarreras.asignatura.findMany({ where: { carreraId } });
   }
 
-  // --- PARTE 2: OPERADORES LÓGICOS (AND, OR, NOT) ---
-
-  /**
-   * Filtrar docentes: Tiempo Completo AND (Dictan materias OR NOT Inactivos)
-   */
-  async listarDocentesCargaAlta() {
-    // Obtenemos IDs de docentes que tienen materias asignadas
+  // 3. Listar los docentes que imparten más de una asignatura
+  async listarDocentesMultiAsignatura() {
     const asignaturas = await this.prismaCarreras.asignatura.findMany({
       where: { docenteId: { not: null } },
-      select: { docenteId: true }
     });
-    const idsConMaterias = [...new Set(asignaturas.map(a => a.docenteId))];
+
+    // Contamos asignaturas por docente
+    const conteo = asignaturas.reduce((acc, asig) => {
+      acc[asig.docenteId] = (acc[asig.docenteId] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Filtramos IDs de docentes con más de 1 asignatura
+    const idsDocentes = Object.keys(conteo).filter(id => conteo[id] > 1);
 
     return this.prismaProfesores.docente.findMany({
-      where: {
-        AND: [
-          { tipoContrato: 'TIEMPO_COMPLETO' }, // Operador AND
-          {
-            OR: [ // Operador OR
-              { id: { in: idsConMaterias as string[] } },
-              { NOT: { estado: 'INACTIVO' } } // Operador NOT
-            ]
-          }
-        ]
-      }
+      where: { id: { in: idsDocentes } }
     });
   }
 
-  /**
-   * Buscar inscripciones: Estudiante AND Período
-   */
+  // 4. Mostrar las matrículas de un estudiante en un período determinado
   async listarMatriculasEstudiante(estudianteId: string, periodoId: string) {
     return this.prismaCarreras.inscripcion.findMany({
       where: {
@@ -92,9 +74,64 @@ async listarEstudiantesActivos() {
     });
   }
 
+  // Este método responde a listarAsignaturas() en el Controller
+  async findAllAsignaturas() {
+    return this.prismaCarreras.asignatura.findMany({
+      include: { carrera: true }
+    });
+  }
+
+  // --- PARTE 2: OPERADORES LÓGICOS (AND, OR, NOT) ---
+
+  /**
+   * Buscar estudiantes: Activos AND Carrera AND Matrícula en período
+   */
+  async buscarEstudiantesAvanzado(carreraId: string, periodoId: string) {
+    // Obtenemos IDs de estudiantes inscritos en ese período
+    const inscripciones = await this.prismaCarreras.inscripcion.findMany({
+      where: { periodoId: periodoId },
+      select: { estudianteId: true }
+    });
+    const idsInscritos = inscripciones.map(i => i.estudianteId);
+
+    return this.prismaUsuarios.estudiante.findMany({
+      where: {
+        AND: [
+          { activo: true },
+          { carreraId: carreraId },
+          { id: { in: idsInscritos } }
+        ]
+      }
+    });
+  }
+
+  /**
+   * Filtrar docentes: Tiempo Completo AND (Dictan materias OR NOT Inactivos)
+   */
+  async listarDocentesCargaAlta() {
+    const asignaturas = await this.prismaCarreras.asignatura.findMany({
+      where: { docenteId: { not: null } },
+      select: { docenteId: true }
+    });
+    const idsConMaterias = [...new Set(asignaturas.map(a => a.docenteId))];
+
+    return this.prismaProfesores.docente.findMany({
+      where: {
+        AND: [
+          { tipoContrato: 'TIEMPO_COMPLETO' },
+          {
+            OR: [
+              { id: { in: idsConMaterias as string[] } },
+              { NOT: { estado: 'INACTIVO' } }
+            ]
+          }
+        ]
+      }
+    });
+  }
+
   // --- PARTE 3: CONSULTA NATIVA SQL ---
   async obtenerReporteMatriculas() {
-    // Uso de SQL Nativo en Prisma 7 para agregación
     const estadisticas: any[] = await this.prismaCarreras.$queryRaw`
       SELECT "estudianteId", COUNT(*) as "totalMaterias"
       FROM "Inscripcion"
@@ -138,7 +175,7 @@ async listarEstudiantesActivos() {
         throw new BadRequestException('La asignatura no existe o no tiene cupos disponibles');
       }
 
-      // 1. Crear la inscripción
+      // 1. Registrar la matrícula (Inscripción)
       const inscripcion = await tx.inscripcion.create({
         data: { 
             estudianteId, 
@@ -147,7 +184,7 @@ async listarEstudiantesActivos() {
         },
       });
 
-      // 2. Restar el cupo
+      // 2. Descontar el cupo disponible de la asignatura
       await tx.asignatura.update({
         where: { id: asignaturaId },
         data: { cuposDisponibles: { decrement: 1 } },
