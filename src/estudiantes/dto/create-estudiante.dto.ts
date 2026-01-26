@@ -1,17 +1,21 @@
-// src/estudiantes/dto/create-estudiante.dto.ts
-import { IsString, IsNotEmpty } from 'class-validator'; // Si usas validaciones (opcional)
+import { IsEmail, IsNotEmpty, IsString, IsBoolean, IsOptional } from 'class-validator';
 
 export class CreateEstudianteDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsString() @IsNotEmpty()
   nombre: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString() @IsNotEmpty()
   apellido: string;
 
-  // 👇 AGREGA ESTO 👇
-  @IsString()
-  @IsNotEmpty()
-  carreraId: string; 
+  @IsEmail() @IsNotEmpty()
+  email: string;
+
+  @IsString() @IsNotEmpty()
+  password: string;
+
+  @IsString() @IsNotEmpty()
+  carreraId: string;
+
+  @IsBoolean() @IsOptional()
+  activo?: boolean;
 }

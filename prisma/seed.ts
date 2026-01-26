@@ -8,29 +8,22 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-// 👇 SOLUCIÓN REAL PARA PRISMA 7:
-// Usamos "Adapters" para inyectar la conexión manualmente, 
-// ya que 'datasources' y 'url' en schema están prohibidos.
-
-// 1. Conexión Usuarios
+// Configuración de Conexiones (Prisma 7)
 const poolUsuarios = new Pool({ connectionString: process.env.DATABASE_URL_USUARIOS });
-const adapterUsuarios = new PrismaPg(poolUsuarios);
-const prismaUsuarios = new ClienteUsuarios({ adapter: adapterUsuarios });
+const prismaUsuarios = new ClienteUsuarios({ adapter: new PrismaPg(poolUsuarios) });
 
-// 2. Conexión Profesores
 const poolProfesores = new Pool({ connectionString: process.env.DATABASE_URL_PROFESORES });
-const adapterProfesores = new PrismaPg(poolProfesores);
-const prismaProfesores = new ClienteProfesores({ adapter: adapterProfesores });
+const prismaProfesores = new ClienteProfesores({ adapter: new PrismaPg(poolProfesores) });
 
-// 3. Conexión Carreras
 const poolCarreras = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapterCarreras = new PrismaPg(poolCarreras);
-const prismaCarreras = new ClienteCarreras({ adapter: adapterCarreras });
+const prismaCarreras = new ClienteCarreras({ adapter: new PrismaPg(poolCarreras) });
 
 async function main() {
-  console.log('🌱 Iniciando Seed con Adaptadores (Bypass)...');
+  console.log('🌱 Iniciando Seed con datos masivos...');
 
-  // --- LIMPIEZA ---
+  const pass = await bcrypt.hash('123456', 10);
+
+  // --- 1. LIMPIEZA ---
   try {
     await prismaCarreras.inscripcion.deleteMany({});
     await prismaCarreras.asignatura.deleteMany({});
@@ -42,55 +35,52 @@ async function main() {
     console.log('⚠️ Aviso limpieza:', e.message);
   }
 
-  // --- 1. CARRERAS ---
-  console.log('🏗️ Creando Carreras...');
-  const soft = await prismaCarreras.carrera.create({ data: { nombre: 'Software' } });
-  const dis = await prismaCarreras.carrera.create({ data: { nombre: 'Diseño' } });
+  // --- 2. CARRERAS ---
+  const soft = await prismaCarreras.carrera.create({ data: { nombre: 'Ingeniería de Software' } });
+  const ciber = await prismaCarreras.carrera.create({ data: { nombre: 'Ciberseguridad' } });
 
-  // --- 2. DOCENTES ---
-  console.log('👨‍🏫 Creando Docentes...');
-  const prof1 = await prismaProfesores.docente.create({ 
-    data: { nombre: 'Roberto Eras', tipoContrato: 'FULL', estado: 'ACTIVO' } 
-  });
-  const prof2 = await prismaProfesores.docente.create({ 
-    data: { nombre: 'Maria Solano', tipoContrato: 'FULL', estado: 'ACTIVO' } 
-  });
+  // --- 3. DOCENTES (Mezcla de Contratos y Estados) ---
+  const profs = await Promise.all([
+    prismaProfesores.docente.create({ data: { nombre: 'Roberto Eras', tipoContrato: 'TIEMPO_COMPLETO', estado: 'ACTIVO' } }),
+    prismaProfesores.docente.create({ data: { nombre: 'Maria Solano', tipoContrato: 'TIEMPO_COMPLETO', estado: 'ACTIVO' } }),
+    prismaProfesores.docente.create({ data: { nombre: 'Juan Pérez', tipoContrato: 'MEDIO_TIEMPO', estado: 'ACTIVO' } }),
+    prismaProfesores.docente.create({ data: { nombre: 'Ana Martínez', tipoContrato: 'TIEMPO_COMPLETO', estado: 'INACTIVO' } }),
+  ]);
 
-  // --- 3. ASIGNATURAS ---
-  console.log('📚 Creando Asignaturas...');
-  await prismaCarreras.asignatura.create({
-    data: { nombre: 'NestJS', cuposDisponibles: 10, carreraId: soft.id, docenteId: prof1.id }
-  });
-  await prismaCarreras.asignatura.create({
-    data: { nombre: 'Diseño UI', cuposDisponibles: 10, carreraId: dis.id, docenteId: prof2.id }
-  });
+  // --- 4. ASIGNATURAS ---
+  const materias = await Promise.all([
+    prismaCarreras.asignatura.create({ data: { nombre: 'NestJS Avanzado', cuposDisponibles: 15, carreraId: soft.id, docenteId: profs[0].id } }),
+    prismaCarreras.asignatura.create({ data: { nombre: 'Arquitectura Cloud', cuposDisponibles: 10, carreraId: soft.id, docenteId: profs[1].id } }),
+    prismaCarreras.asignatura.create({ data: { nombre: 'Hacking Ético', cuposDisponibles: 12, carreraId: ciber.id, docenteId: profs[2].id } }),
+    prismaCarreras.asignatura.create({ data: { nombre: 'Redes Seguras', cuposDisponibles: 8, carreraId: ciber.id, docenteId: profs[0].id } }),
+  ]);
 
-  // --- 4. ESTUDIANTES ---
-  console.log('🎓 Creando Estudiantes...');
-  const pass = await bcrypt.hash('123456', 10);
-  
-  const estudiante = await prismaUsuarios.estudiante.create({
-    data: {
-      nombre: 'Luis',
-      apellido: 'Jaramillo',
-      email: 'luis.jaramillo@test.com',
-      password: pass,
-      activo: true,
-      carreraId: soft.id
-    }
-  });
+  // --- 5. 10 ESTUDIANTES (Mezcla de activos e inactivos) ---
+  const alumnosData = [
+    { nombre: 'Luis', apellido: 'Jaramillo', email: 'luis@test.com', activo: true, carreraId: soft.id },
+    { nombre: 'Carla', apellido: 'Mendoza', email: 'carla@test.com', activo: true, carreraId: soft.id },
+    { nombre: 'Diego', apellido: 'Vaca', email: 'diego@test.com', activo: true, carreraId: ciber.id },
+    { nombre: 'Elena', apellido: 'Reyes', email: 'elena@test.com', activo: false, carreraId: soft.id }, // Inactivo para pruebas
+    { nombre: 'Fernando', apellido: 'Soto', email: 'fernando@test.com', activo: true, carreraId: soft.id },
+    { nombre: 'Gabriela', apellido: 'Luna', email: 'gabriela@test.com', activo: true, carreraId: ciber.id },
+    { nombre: 'Hugo', apellido: 'Paz', email: 'hugo@test.com', activo: true, carreraId: soft.id },
+    { nombre: 'Isabel', apellido: 'Torres', email: 'isabel@test.com', activo: true, carreraId: ciber.id },
+    { nombre: 'Jorge', apellido: 'Díaz', email: 'jorge@test.com', activo: false, carreraId: ciber.id }, // Inactivo
+    { nombre: 'Karen', apellido: 'Vega', email: 'karen@test.com', activo: true, carreraId: soft.id },
+  ];
 
-  console.log('✅ Seed finalizado.');
-  console.log('🔑 Credenciales: luis.jaramillo@test.com / 123456');
+  for (const data of alumnosData) {
+    await prismaUsuarios.estudiante.create({
+      data: { ...data, password: pass }
+    });
+  }
+
+  console.log('✅ Seed finalizado con 10 estudiantes y 4 docentes.');
 }
 
 main()
-  .catch(e => {
-    console.error('❌ Error:', e);
-    process.exit(1);
-  })
+  .catch(e => { console.error('❌ Error:', e); process.exit(1); })
   .finally(async () => {
-    // Cerramos los pools y las conexiones
     await prismaUsuarios.$disconnect();
     await prismaProfesores.$disconnect();
     await prismaCarreras.$disconnect();

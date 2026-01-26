@@ -1,17 +1,13 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { ProfesoresService } from './profesores.service';
+import { CreateProfesorDto } from './dto/create-profesor.dto';
 
 @Controller('profesores')
 export class ProfesoresController {
   constructor(private readonly profesoresService: ProfesoresService) {}
 
   @Post()
-  create(@Body() body: { nombre: string; apellido: string }) {
-    return this.profesoresService.create(body);
-  }
-
-  @Get()
-  findAll() {
-    return this.profesoresService.findAll();
+  create(@Body() createProfesorDto: CreateProfesorDto) {
+    return this.profesoresService.create(createProfesorDto);
   }
 }

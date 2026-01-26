@@ -5,7 +5,7 @@ import { UniversidadService } from './universidad.service';
 export class UniversidadController {
   constructor(private readonly service: UniversidadService) {}
 
-  // --- LISTADO GENERAL PARA PRUEBAS (IDs y Cupos) ---
+  // --- LISTADO GENERAL ---
   @Get('asignaturas')
   listarAsignaturas() {
     return this.service.findAllAsignaturas();
@@ -22,13 +22,17 @@ export class UniversidadController {
     return this.service.obtenerAsignaturasPorCarrera(id);
   }
 
+  // --- PARTE 2: OPERADORES LÓGICOS ---
   @Get('docentes-carga-alta')
   listarDocentesCargaAlta() {
     return this.service.listarDocentesCargaAlta();
   }
 
   @Get('matriculas-periodo')
-  listarMatriculas(@Query('estudianteId') eId: string, @Query('periodoId') pId: string) {
+  listarMatriculas(
+    @Query('estudianteId') eId: string, 
+    @Query('periodoId') pId: string
+  ) {
     return this.service.listarMatriculasEstudiante(eId, pId);
   }
 

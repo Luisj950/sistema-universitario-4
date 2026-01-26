@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 
 export class CreateProfesorDto {
   @IsString()
@@ -7,5 +7,9 @@ export class CreateProfesorDto {
 
   @IsString()
   @IsNotEmpty()
-  apellido: string;
+  tipoContrato: string; // "TIEMPO_COMPLETO" o "MEDIO_TIEMPO"
+
+  @IsString()
+  @IsOptional()
+  estado?: string;
 }

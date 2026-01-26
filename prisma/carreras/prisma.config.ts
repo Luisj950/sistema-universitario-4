@@ -1,10 +1,12 @@
-import 'dotenv/config';
 import { defineConfig } from '@prisma/config';
+import * as dotenv from 'dotenv';
+import { join } from 'path';
+
+dotenv.config({ path: join(process.cwd(), '.env') });
 
 export default defineConfig({
-  schema: 'schema.prisma',
+  schema: './schema.prisma',
   datasource: {
-    // 👇 Para Carreras, usamos la variable genérica según tu .env
-    url: process.env.DATABASE_URL ?? '', 
+    url: process.env.DATABASE_URL, 
   },
 });
